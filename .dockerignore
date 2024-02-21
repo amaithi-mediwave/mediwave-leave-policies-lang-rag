@@ -1,0 +1,10 @@
+.env
+weaviate-data ingestion.ipynb
+packages/rag-weaviate/rag_weaviate.ipynb
+packages/rag-weaviate/rag_weaviate/__pycache__
+app/__pycache__
+.venv
+__pycache__
+
+
+

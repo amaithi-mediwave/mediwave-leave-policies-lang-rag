@@ -3,6 +3,8 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
 from langchain_community.vectorstores import Weaviate
 from langchain_core.output_parsers import StrOutputParser
@@ -18,6 +20,8 @@ import weaviate
 from langchain.globals import set_llm_cache
 from langchain.cache import RedisCache
 import redis
+from retry import retry
+
 
 
 WEAVIATE_CLIENT_URL = os.getenv('WEAVIATE_CLIENT_URL')
@@ -42,7 +46,7 @@ vectorstore = Weaviate(client,
                        WEAVIATE_COLLECTION_PROPERTY 
                        )
 
-retriever = vectorstore.as_retriever(search_kwargs={"k": WEAVIATE_RETRIEVER_SEARCH_TOP_K})
+retriever = vectorstore.as_retriever(search_kwargs={"k": int(WEAVIATE_RETRIEVER_SEARCH_TOP_K)})
 
 
 

@@ -1,6 +1,42 @@
 ---
 version: '3.4'
 services:
+  langchain-app:
+    build: .
+    ports:
+      - 8005:8005
+    restart: on-failure:0
+    depends_on:
+      - weaviate
+      - redis-memory
+      
+    environment:
+      WEAVIATE_CLIENT_URL: "http://weaviate:8080"
+      WEAVIATE_COLLECTION_NAME: "Mediwave_leave"
+      WEAVIATE_COLLECTION_PROPERTY : "content"
+      WEAVIATE_RETRIEVER_SEARCH_TOP_K : '10'
+      OLLAMA_SERVER_URL : 'http://ollama:11434'  
+      CHAT_OLLAMA_MODEL_NAME : "llama2:7b-chat"
+      REDIS_URL_SEMANTIC_CACHE : "redis://redis-memory:6379/0"
+      REDIS_URL_CHAT_MEMORY_HISTORY : "redis://redis-memory:6379/"
+      CHAT_OLLAMA_MODEL_TEMPERATURE : '0.1'
+
+  ollama:
+    deploy:
+        resources:
+            reservations:
+                devices:
+                    - driver: nvidia
+                      count: all
+                      capabilities:
+                          - gpu
+    volumes:
+        - ollama:/root/.ollama
+    ports:
+        - 11434:11434
+    container_name: ollama
+    image: ollama/ollama
+    
   weaviate:
     command:
     - --host
@@ -37,6 +73,10 @@ services:
     ports:
     - 6379:6379
     - 8001:8001
+
 volumes:
   weaviate_data:
+  ollama:
+        external:
+            name: ollama
 ...
