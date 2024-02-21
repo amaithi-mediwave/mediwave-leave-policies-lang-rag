@@ -1,34 +1,28 @@
 
 
 from langchain_community.vectorstores import Weaviate
-from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel
 from langchain_core.runnables import RunnablePassthrough
 from langchain_community.chat_models import ChatOllama
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_community.chat_message_histories import RedisChatMessageHistory
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnableBranch
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_community.embeddings import GPT4AllEmbeddings
 from langchain.cache import RedisSemanticCache
 from langchain.globals import set_llm_cache
-from langchain.prompts import PromptTemplate
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 import os
-import redis
 import weaviate
 from operator import itemgetter
-from typing import Dict
 import warnings
-# warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 #---------------------- ENV ---------------------------------------
 
@@ -59,17 +53,16 @@ vectorstore = Weaviate(client,
                        WEAVIATE_COLLECTION_NAME, 
                        WEAVIATE_COLLECTION_PROPERTY)
 
-retriever = vectorstore.as_retriever()
+retriever = vectorstore.as_retriever(search_kwargs={"k": int(WEAVIATE_RETRIEVER_SEARCH_TOP_K)})
 
 
-#------------------------------ LLM - Llama2:7b-chat -----------------------
+#------------------------------ LLM - Llama2 -----------------------
 
-# chat1 = ChatOllama(model="llama2:13b-chat")
 
 chat_model = ChatOllama(
     base_url=OLLAMA_SERVER_URL,
     model=CHAT_OLLAMA_MODEL_NAME, 
-    temperature=CHAT_OLLAMA_MODEL_TEMPERATURE)
+    temperature=float(CHAT_OLLAMA_MODEL_TEMPERATURE))
 
 
 question_answering_prompt = ChatPromptTemplate.from_messages(
@@ -83,8 +76,7 @@ question_answering_prompt = ChatPromptTemplate.from_messages(
         
         ),
         ("human", "\n{question}")
-        # ("human", "\n{input}"),
-        # MessagesPlaceholder(variable_name="messages"),
+
     ]
 )
 
@@ -93,7 +85,7 @@ question_answering_prompt = ChatPromptTemplate.from_messages(
 document_chain = create_stuff_documents_chain(chat_model, question_answering_prompt)   
 
 conversational_retrieval_chain = RunnablePassthrough.assign(
-    # chat_query=query_transforming_retriever_chain,).assign(
+    
     context = (lambda x: x["question"]) | retriever).assign(
     answer=document_chain,) | itemgetter("answer")
 
@@ -102,7 +94,6 @@ conversational_retrieval_chain = RunnablePassthrough.assign(
 chain = RunnableWithMessageHistory(
     conversational_retrieval_chain,
 
-    # lambda session_id: _chat_history,
     lambda session_id: RedisChatMessageHistory(
         session_id, 
         url=REDIS_URL_CHAT_MEMORY_HISTORY
